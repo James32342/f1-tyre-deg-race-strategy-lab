@@ -1,189 +1,55 @@
-# NeuroPath AI - 
+# Apex Lab — F1 Race Strategy Analytics
 
-An adaptive cognitive profiling and intelligent assessment platform that provides personalized insights, living analytics, and AI-guided growth through beautiful neural visualizations.
+A React dashboard and Python API for real Formula 1 race timing, tyre stints, weather, classified results, tyre degradation, and walk-forward finishing-position model evaluation.
 
-## Features
+## Run locally
 
-### 🧠 Neural Constellation Visualization
-- **Elegant orbital design** with 5 behavioral attributes orbiting a pulsing neural core
-- **Real-time animations** with optimized performance
-- **Interactive nodes** displaying behavioral metrics:
-  - Resilience - Ability to bounce back from challenges
-  - Decision Clarity - Confidence in making choices
-  - Emotional Balance - Stability under pressure
-  - Growth Mindset - Capacity for development
-  - Social Intelligence - Understanding others & situations
+### Start the API
 
-### 📊 Comprehensive Assessment System
-- **Adaptive questionnaire** with dynamic difficulty adjustment
-- **Real-time performance tracking** (accuracy, response time, adaptability)
-- **Evidence-based insights** linked directly to assessment performance
-- **Detailed learning style analysis** with 8 key metrics
-- **Personality spectrum** with 10 comprehensive attributes
+From the repository root, create an isolated Python environment and install the backend dependencies:
 
-### 🎯 Personalized Insights
-- **Learning Style Analysis**: Processing speed, retention, transfer ability, consistency
-- **Detailed Insights**: Cognitive performance, psychological patterns, adaptive capacity
-- **Actionable Recommendations**: Immediate actions, long-term development, skill enhancement
-- **Performance Evidence**: Response time analysis, accuracy consistency, adaptation speed
-
-### 🎨 Beautiful UI/UX
-- **Dark theme** with gradient backgrounds and glass morphism effects
-- **Responsive design** optimized for all screen sizes
-- **Smooth animations** and micro-interactions
-- **Performance optimized** with GPU acceleration
-
-## Technology Stack
-
-- **Frontend**: HTML5, CSS3, Vanilla JavaScript
-- **Styling**: CSS Grid, Flexbox, CSS Variables, Animations
-- **Backend Ready**: Node.js/Express compatible structure
-- **API Integration**: Gemini AI API ready (add key to .env)
-
-## Getting Started
-
-### Prerequisites
-- Git (for version control)
-- Node.js (optional, for backend)
-- Modern web browser
-
-### Installation
-
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/yourusername/neuropath-ai.git
-   cd neuropath-ai
-   ```
-
-2. **Set up environment variables**
-   ```bash
-   # Create .env file in root directory
-   echo "GEMINI_API_KEY=your_api_key_here" > .env
-   ```
-
-3. **Open in browser**
-   ```bash
-   # Simply open index.html in your browser
-   # Or use a local server for better development
-   python -m http.server 8000
-   # or
-   npx serve .
-   ```
-
-### Environment Setup
-
-#### Git Installation (Windows)
-```bash
-# Download and install Git from https://git-scm.com/download/win
-# Or use winget
-winget install --id Git.Git -e --source winget
-
-# Configure Git
-git config --global user.name "Your Name"
-git config --global user.email "your.email@example.com"
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -r backend\requirements.txt
+python -m uvicorn main:app --app-dir backend --reload --port 8000
 ```
 
-#### GitHub Setup
-1. Create account at https://github.com
-2. Create new repository: `neuropath-ai`
-3. Add remote and push:
-```bash
-git remote add origin https://github.com/yourusername/neuropath-ai.git
-git branch -M main
-git push -u origin main
+The API health check is at `http://localhost:8000/api/health`.
+
+### Start the dashboard
+
+In another terminal:
+
+```powershell
+cd frontend
+npm install
+npm run dev
 ```
 
-## Project Structure
+Open the Vite URL (usually `http://localhost:5173`). The Vite server proxies `/api` to the Python API. On start, the dashboard loads a live session if one is in progress, otherwise the latest completed race with available timing data. Changing the season or race loads its data automatically. During a live race the dashboard polls session timing every 30 seconds; session API responses are cached for 30 seconds to reduce provider load.
 
+## Real data and analysis
+
+- **Race schedule and lap timing:** [OpenF1](https://openf1.org/) provides the race sessions, driver laps, tyre stints, live positions, and weather. Historical timing is available from 2023 onward.
+- **Starting grid and classification:** [Jolpica-F1](https://github.com/jolpica/jolpica-f1) supplies the official grid and finish positions and supplements OpenF1 driver/team details.
+- **Tyre pace chart:** lap times are centered on each driver's median, adjusted for the robust race-progress trend when identifiable, and extreme residuals are omitted using a 4.5-scaled-MAD threshold (at least four seconds). The chart then shows the cross-driver median and interquartile range per compound and tyre age. Ages represented by fewer than three drivers are omitted, and gaps are not connected. Pace is a relative comparison, not raw lap time or a direct measure of tyre wear.
+- **Tyre degradation:** pit-in and pit-out laps are excluded. Statsmodels OLS estimates lap-time change per tyre-age lap while controlling for lap progression as a fuel-load proxy, compound, and driver. Tyre age counts the completed lap, so the first lap on a new set is age one. If tyre age cannot be distinguished from race progression, the API reports the regression as unavailable rather than returning misleading slopes.
+- **Grid relationship:** Spearman correlation compares actual starting grid and classified finish positions.
+- **XGBoost:** The selected race is held out; the model trains only on earlier classified results from the preceding two seasons and earlier rounds of the selected season. It is compared with a grid-position ranking baseline. This is a retrospective benchmark, not a forecast for an unrun race.
+- **CSV:** Upload a lap-level CSV with FastF1-style `Driver`, `Compound`, `LapNumber`, `LapTime`, `TyreLife` columns. `GridPosition`, `Position`, `season`, and `round` enable the additional position analysis. Lap times can be seconds or durations such as `0 days 00:01:32.500`.
+
+Completed race data is fetched when requested; during a scheduled race session, current positions and lap data refresh as providers publish them. OpenF1 session data is cached for 30 seconds, Jolpica results for one hour, and calendars for up to six hours. This is a polling dashboard, not a millisecond real-time telemetry stream.
+
+## Project layout
+
+```text
+frontend/
+  src/App.jsx           React dashboard and race data views
+  src/styles.css        Responsive dashboard styles
+  vite.config.js        Local API proxy
+backend/
+  main.py               FastAPI endpoints and provider integrations
+  analysis.py           Pandas, Statsmodels, SciPy, scikit-learn, XGBoost
+  requirements.txt      Python dependencies
 ```
-neuropath-ai/
-├── index.html          # Main application
-├── style.css           # Styling and animations
-├── script.js           # Application logic
-├── .gitignore          # Git ignore file (protects .env)
-├── .env               # Environment variables (API keys)
-├── README.md           # This file
-└── backend/            # Backend structure (optional)
-```
-
-## API Integration
-
-### Gemini API Setup
-1. Get API key from Google AI Studio
-2. Add to `.env` file:
-   ```
-   GEMINI_API_KEY=your_gemini_api_key_here
-   ```
-3. The application will automatically use the API for enhanced insights
-
-### Environment Variables
-- `GEMINI_API_KEY`: Google Gemini AI API key
-- `NODE_ENV`: Environment (development/production)
-
-## Development
-
-### Local Development
-```bash
-# Start local server
-npx serve .
-
-# Or use Python
-python -m http.server 8000
-
-# Or use Node.js
-npx http-server
-```
-
-### Git Workflow
-```bash
-# Add changes
-git add .
-
-# Commit changes
-git commit -m "Your commit message"
-
-# Push to GitHub
-git push origin main
-
-# Create new branch
-git checkout -b feature-name
-
-# Switch branches
-git checkout main
-```
-
-## Performance Optimizations
-
-- **CSS Containment**: GPU acceleration for animations
-- **Will-change hints**: Optimized rendering
-- **Reduced animations**: Minimal computational overhead
-- **Efficient layout**: No unnecessary reflows
-
-## Security
-
-- **Environment variables**: API keys protected by .gitignore
-- **No hardcoded secrets**: All sensitive data in environment
-- **Secure defaults**: Production-ready configuration
-
-## Contributing
-
-1. Fork the repository
-2. Create feature branch
-3. Make changes
-4. Test thoroughly
-5. Submit pull request
-
-## License
-
-MIT License - see LICENSE file for details
-
-## Support
-
-For issues and questions:
-- Create GitHub issue
-- Check documentation
-- Review environment setup
-
----
-
-**Built with ❤️ for the NeuroPath AI Hackathon**

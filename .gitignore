@@ -23,6 +23,11 @@ frontend/.next/
 *.tgz
 *.tar.gz
 
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+
 # Claude Code local settings
 .claude/settings.local.json
 
